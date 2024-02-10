@@ -136,14 +136,25 @@ void nano::store::lmdb::write_transaction_impl::commit()
 	}
 }
 
-
-void nano::store::lmdb::write_transaction_impl::renew ()
+//5th
+void nano::store::lmdb::write_transaction_impl::renew()
 {
-	auto status (mdb_txn_begin (env, nullptr, 0, &handle));
-	release_assert (status == MDB_SUCCESS, mdb_strerror (status));
-	txn_callbacks.txn_start (this);
+	auto status = mdb_txn_begin(env, nullptr, 0, &handle);
+	if (status != MDB_SUCCESS)
+	{
+		auto error_str = mdb_strerror(status);
+		nano::logger_mt& logger = env.get_logger();
+		logger.always_log("LMDB write_transaction_impl renew error: ", error_str);
+#ifdef DEBUG
+		assert(false && "LMDB write_transaction_impl renew failed");
+#else
+		throw std::runtime_error("LMDB write_transaction_impl renew failed: " + std::string(error_str));
+#endif
+	}
+	txn_callbacks.txn_start(this);
 	active = true;
 }
+
 
 void * nano::store::lmdb::write_transaction_impl::get_handle () const
 {
