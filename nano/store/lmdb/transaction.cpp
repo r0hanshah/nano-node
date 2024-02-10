@@ -55,12 +55,22 @@ nano::store::lmdb::read_transaction_impl::read_transaction_impl (nano::store::lm
 }
 
 
-nano::store::lmdb::read_transaction_impl::~read_transaction_impl ()
+nano::store::lmdb::read_transaction_impl::~read_transaction_impl()
 {
-	// This uses commit rather than abort, as it is needed when opening databases with a read only transaction
-	auto status (mdb_txn_commit (handle));
-	release_assert (status == MDB_SUCCESS);
-	txn_callbacks.txn_end (this);
+	auto status = mdb_txn_commit(handle);
+	if (status != MDB_SUCCESS)
+	{
+		auto error_str = mdb_strerror(status);
+		nano::logger_mt& logger = environment.get_logger(); // Assuming 'environment' is accessible
+		logger.always_log("LMDB read_transaction_impl destruction error: ", error_str);
+		// Terminate or other non-throwing handling
+#ifdef DEBUG
+		assert(false && "LMDB read_transaction_impl destruction failed");
+#else
+		std::abort(); // or other non-exception handling
+#endif
+	}
+	txn_callbacks.txn_end(this);
 }
 
 void nano::store::lmdb::read_transaction_impl::reset ()
