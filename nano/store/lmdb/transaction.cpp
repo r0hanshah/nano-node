@@ -114,20 +114,28 @@ nano::store::lmdb::write_transaction_impl::~write_transaction_impl ()
 {
 	commit ();
 }
-
-void nano::store::lmdb::write_transaction_impl::commit ()
+//4th
+void nano::store::lmdb::write_transaction_impl::commit()
 {
 	if (active)
 	{
-		auto status = mdb_txn_commit (handle);
+		auto status = mdb_txn_commit(handle);
 		if (status != MDB_SUCCESS)
 		{
-			release_assert (false && "Unable to write to the LMDB database", mdb_strerror (status));
+			auto error_str = mdb_strerror(status);
+			nano::logger_mt& logger = env.get_logger();
+			logger.always_log("LMDB write_transaction_impl commit error: ", error_str);
+#ifdef DEBUG
+			assert(false && "LMDB write_transaction_impl commit failed");
+#else
+			throw std::runtime_error("LMDB write_transaction_impl commit failed: " + std::string(error_str));
+#endif
 		}
-		txn_callbacks.txn_end (this);
+		txn_callbacks.txn_end(this);
 		active = false;
 	}
 }
+
 
 void nano::store::lmdb::write_transaction_impl::renew ()
 {
