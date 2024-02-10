@@ -35,14 +35,25 @@ private:
 };
 }
 
-nano::store::lmdb::read_transaction_impl::read_transaction_impl (nano::store::lmdb::env const & environment_a, nano::store::lmdb::txn_callbacks txn_callbacks_a) :
-	store::read_transaction_impl (environment_a.store_id),
-	txn_callbacks (txn_callbacks_a)
+//read transaction
+nano::store::lmdb::read_transaction_impl::read_transaction_impl (nano::store::lmdb::env const & environment_a, nano::store::lmdb::txn_callbacks txn_callbacks_a)
+	: store::read_transaction_impl (environment_a.store_id), txn_callbacks (txn_callbacks_a)
 {
-	auto status (mdb_txn_begin (environment_a, nullptr, MDB_RDONLY, &handle));
-	release_assert (status == 0);
-	txn_callbacks.txn_start (this);
+	auto status = mdb_txn_begin(environment_a, nullptr, MDB_RDONLY, &handle);
+	if (status != MDB_SUCCESS)
+	{
+		auto error_str = mdb_strerror(status);
+		nano::logger_mt& logger = environment_a.get_logger();
+		logger.always_log("LMDB read_transaction_impl initialization error: ", error_str);
+#ifdef DEBUG
+		assert(false && "LMDB read_transaction_impl initialization failed");
+#else
+		throw std::runtime_error("LMDB read_transaction_impl initialization failed: " + std::string(error_str));
+#endif
+	}
+	txn_callbacks.txn_start(this);
 }
+
 
 nano::store::lmdb::read_transaction_impl::~read_transaction_impl ()
 {
