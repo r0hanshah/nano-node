@@ -54,7 +54,7 @@ nano::store::lmdb::read_transaction_impl::read_transaction_impl (nano::store::lm
 	txn_callbacks.txn_start(this);
 }
 
-
+// 2nd function
 nano::store::lmdb::read_transaction_impl::~read_transaction_impl()
 {
 	auto status = mdb_txn_commit(handle);
@@ -78,13 +78,24 @@ void nano::store::lmdb::read_transaction_impl::reset ()
 	mdb_txn_reset (handle);
 	txn_callbacks.txn_end (this);
 }
-
-void nano::store::lmdb::read_transaction_impl::renew ()
+// 3rd
+void nano::store::lmdb::read_transaction_impl::renew()
 {
-	auto status (mdb_txn_renew (handle));
-	release_assert (status == 0);
-	txn_callbacks.txn_start (this);
+	auto status = mdb_txn_renew(handle);
+	if (status != MDB_SUCCESS)
+	{
+		auto error_str = mdb_strerror(status);
+		nano::logger_mt& logger = environment.get_logger(); // Assuming 'environment' is accessible
+		logger.always_log("LMDB read_transaction_impl renew error: ", error_str);
+#ifdef DEBUG
+		assert(false && "LMDB read_transaction_impl renew failed");
+#else
+		throw std::runtime_error("LMDB read_transaction_impl renew failed: " + std::string(error_str));
+#endif
+	}
+	txn_callbacks.txn_start(this);
 }
+
 
 void * nano::store::lmdb::read_transaction_impl::get_handle () const
 {
